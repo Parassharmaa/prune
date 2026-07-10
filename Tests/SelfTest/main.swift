@@ -14,6 +14,34 @@ func expect(_ condition: @autoclosure () -> Bool, _ message: String) throws {
     guard condition() else { throw SelfTestError.failed(message) }
 }
 
+func testScanRootDefaults() throws {
+    let suiteName = "dev.paras.prune.tests.\(UUID().uuidString)"
+    guard let defaults = UserDefaults(suiteName: suiteName) else {
+        throw SelfTestError.failed("Could not create isolated defaults")
+    }
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let suggested = ScanRootDefaults.load(from: defaults)
+    try expect(
+        suggested.first == FileManager.default.homeDirectoryForCurrentUser.standardizedFileURL,
+        "First launch should scan the user's Home folder"
+    )
+    try expect(
+        suggested.contains { $0.lastPathComponent == "Documents" },
+        "First launch should include Documents"
+    )
+    try expect(
+        suggested.contains { $0.lastPathComponent == "Downloads" },
+        "First launch should include Downloads"
+    )
+
+    defaults.set([], forKey: ScanRootDefaults.storageKey)
+    try expect(
+        ScanRootDefaults.load(from: defaults).isEmpty,
+        "An intentionally empty scan folder list should remain empty"
+    )
+}
+
 func testPorcelainParser() throws {
     let fields = [
         "worktree /tmp/main repo",
@@ -158,6 +186,8 @@ func testRealRepositoryDiscovery() throws {
 }
 
 do {
+    try testScanRootDefaults()
+    print("✓ first-run scan folders use dynamic macOS locations")
     try testPorcelainParser()
     print("✓ porcelain parser")
     try testGitHubMergedHeadReadiness()

@@ -65,10 +65,11 @@ The build script creates an ad-hoc signed local app bundle. Full Xcode is not re
 
 On first launch:
 
-1. Open **Settings** from the gear icon.
-2. Choose one or more folders containing Git repositories.
-3. Prune stores only those user-selected scan roots—there are no hardcoded filesystem paths.
-4. Authenticate `gh` if GitHub status is unavailable.
+1. Prune starts with your macOS **Home**, **Desktop**, **Documents**, and **Downloads** locations.
+2. Open **Settings** from the gear icon to add or remove scan folders.
+3. These locations are resolved through macOS APIs—there are no machine-specific hardcoded filesystem paths.
+4. Overlapping locations are scanned only once, and an intentionally empty folder list stays empty.
+5. Authenticate `gh` if GitHub status is unavailable.
 
 ## Cleanup safety
 

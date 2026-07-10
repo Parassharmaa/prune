@@ -56,7 +56,7 @@ final class AppStore: ObservableObject {
         self.defaults = defaults
         self.refreshesAfterCleanup = refreshesAfterCleanup
         self.isAutoCleanupEnabled = defaults.bool(forKey: "autoCleanupEnabled")
-        self.roots = Self.loadRoots(from: defaults)
+        self.roots = ScanRootDefaults.load(from: defaults)
         self.worktrees = initialWorktrees
         self.displayOrderIDs = Self.finalDisplayOrder(for: initialWorktrees)
         self.displayReadyIDs = Set(initialWorktrees.filter(\.isCleanupCandidate).map(\.id))
@@ -319,7 +319,7 @@ final class AppStore: ObservableObject {
     }
 
     private func persistRoots() {
-        defaults.set(roots.map(\.path), forKey: "scanRoots")
+        defaults.set(roots.map(\.path), forKey: ScanRootDefaults.storageKey)
     }
 
     private func orderedForDisplay(_ candidates: [WorktreeSnapshot]) -> [WorktreeSnapshot] {
@@ -349,8 +349,4 @@ final class AppStore: ObservableObject {
         return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
     }
 
-    private static func loadRoots(from defaults: UserDefaults) -> [URL] {
-        defaults.stringArray(forKey: "scanRoots")?
-            .map { URL(fileURLWithPath: $0).standardizedFileURL } ?? []
-    }
 }

@@ -6,6 +6,7 @@ cd "$ROOT"
 mkdir -p .build
 
 swiftc \
+  Sources/Prune/Core/ScanRootDefaults.swift \
   Sources/Prune/Core/WorktreeSnapshot.swift \
   Sources/Prune/Core/WorktreePorcelainParser.swift \
   Sources/Prune/Services/CommandRunner.swift \
