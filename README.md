@@ -83,7 +83,7 @@ This writes `.build/dist/Prune-macOS.zip` and a matching `.sha256` checksum.
 
 On first launch:
 
-1. Prune starts with your macOS **Home**, **Desktop**, **Documents**, and **Downloads** locations.
+1. Prune saves your macOS **Home**, **Documents**, and **Downloads** locations as its initial scan folders.
 2. Open **Settings** from the gear icon to add or remove scan folders.
 3. These locations are resolved through macOS APIs—there are no machine-specific hardcoded filesystem paths.
 4. Overlapping locations are scanned only once, and an intentionally empty folder list stays empty.

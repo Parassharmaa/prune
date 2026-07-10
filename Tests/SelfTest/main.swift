@@ -34,6 +34,10 @@ func testScanRootDefaults() throws {
         suggested.contains { $0.lastPathComponent == "Downloads" },
         "First launch should include Downloads"
     )
+    try expect(
+        defaults.stringArray(forKey: ScanRootDefaults.storageKey) == suggested.map(\.path),
+        "First-launch scan folders should be saved immediately"
+    )
 
     defaults.set([], forKey: ScanRootDefaults.storageKey)
     try expect(

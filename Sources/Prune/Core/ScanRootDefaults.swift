@@ -14,12 +14,13 @@ enum ScanRootDefaults {
             )
         }
 
-        return suggested(fileManager: fileManager)
+        let roots = suggested(fileManager: fileManager)
+        defaults.set(roots.map(\.path), forKey: storageKey)
+        return roots
     }
 
     static func suggested(fileManager: FileManager = .default) -> [URL] {
         let standardFolders: [FileManager.SearchPathDirectory] = [
-            .desktopDirectory,
             .documentDirectory,
             .downloadsDirectory
         ]

@@ -25,7 +25,7 @@ struct MenuBarView: View {
                     ContentUnavailableView {
                         Label("No worktrees found", systemImage: "externaldrive.badge.questionmark")
                     } description: {
-                        Text("Prune scans your Home, Desktop, Documents, and Downloads folders by default. You can change them in Settings.")
+                        Text("Prune scans your Home, Documents, and Downloads folders by default. You can change them in Settings.")
                     } actions: {
                         Button("Open Settings", action: showSettings)
                             .pruneGlassButton(prominent: true)
