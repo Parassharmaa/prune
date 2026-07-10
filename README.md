@@ -53,6 +53,16 @@ gh auth login
 
 ## Build and run
 
+### Download
+
+Every successful GitHub Actions run produces a universal **Prune-macOS** build for both Apple Silicon and Intel Macs. Open the run's **Artifacts** section, download it, extract `Prune-macOS.zip`, and move `Prune.app` to Applications.
+
+Version tags such as `v0.1.0` automatically publish the same zip and its SHA-256 checksum on the [Releases page](https://github.com/Parassharmaa/prune/releases), providing a public download that does not expire with CI artifact retention.
+
+The app is currently ad-hoc signed rather than notarized. On first launch, macOS may require **Control-click → Open**. Developer ID signing and notarization are planned before stable distribution.
+
+### Build locally
+
 ```sh
 git clone https://github.com/Parassharmaa/prune.git
 cd prune
@@ -62,6 +72,14 @@ open .build/Prune.app
 ```
 
 The build script creates an ad-hoc signed local app bundle. Full Xcode is not required for local development, but Developer ID signing and notarization will require it before distribution.
+
+Create the same universal download archive used by CI:
+
+```sh
+scripts/package-app.sh
+```
+
+This writes `.build/dist/Prune-macOS.zip` and a matching `.sha256` checksum.
 
 On first launch:
 
@@ -155,11 +173,12 @@ Tests/SelfTest/         Dependency-free integration checks
 Tests/E2E/              Native sample scenarios
 Tools/                  Scan benchmarking utility
 scripts/                Build, validation, and E2E commands
+.github/workflows/      CI, universal packaging, and tagged releases
 ```
 
 ## Privacy
 
-Prune runs locally. It does not upload repository contents, include analytics, or operate on folders that were not explicitly selected. GitHub status is queried through the user's existing authenticated `gh` session.
+Prune runs locally. It does not upload repository contents or include analytics, and it scans only the folders visible in Settings. GitHub status is queried through the user's existing authenticated `gh` session.
 
 ## Status
 
