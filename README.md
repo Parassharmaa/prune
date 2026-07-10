@@ -1,31 +1,36 @@
 # Prune
 
-**A native macOS menu bar app for finding, understanding, and safely removing Git worktrees.**
+**A native macOS menu bar app for finding disk hotspots and safely reclaiming space.**
 
-Prune shows how much space linked worktrees consume, connects branches to their GitHub pull requests, and makes finished work easy to clean without losing local changes.
+Prune scans guarded, user-scoped storage areas for old generated data, explains the consequence of every cleanup, and keeps its original GitHub-aware worktree manager as a dedicated module.
 
 <p align="center">
-  <img src="docs/images/prune-sample.png" width="400" alt="Prune menu bar app showing sample worktrees and cleanup actions">
+  <img src="docs/images/prune-sample.png" width="400" alt="Prune menu bar app showing fixture-only disk hotspots and cleanup actions">
 </p>
 
-> The screenshot uses deterministic fixture data. It contains no real repositories, branches, paths, or pull requests.
+> The screenshot uses deterministic fixture data. It contains no real paths, caches, downloads, repositories, or pull requests.
 
 ## Why Prune?
 
-Worktrees are useful, but they quietly accumulate dependencies, build output, and gigabytes of duplicated files. Remembering which branch belongs to which PR—and whether it is safe to remove—is the tedious part.
+macOS exposes broad storage categories, but the large, hidden, and re-creatable folders under `~/Library` are still difficult to judge. Size alone is not enough: a cache, an archive, and a project can all be 10 GB with very different deletion risk.
 
-Prune keeps those signals together:
+Prune combines size with a safety rubric:
 
-- disk space used by every linked worktree;
-- current Git status and local-change count;
-- draft, open, closed, and merged GitHub PR status;
-- exact merged-head verification;
-- guarded cleanup through Git's native worktree commands.
+- generated cache vs. user-authored data;
+- exact allowlisted location and containment checks;
+- 30-day inactivity threshold;
+- clear cleanup consequence and inline confirmation;
+- opt-in automation only for freshly rescanned safe data.
 
 ## Highlights
 
 - **Native macOS experience** — SwiftUI `MenuBarExtra`, Liquid Glass on macOS 26, and native material fallbacks on macOS 14–15.
-- **Progressive scanning** — worktrees appear immediately while bounded background jobs calculate sizes.
+- **Disk hotspots** — finds aged Xcode data, simulator caches, app caches, Homebrew downloads, logs, Trash, and old downloaded installers.
+- **Tool-aware inspection** — surfaces Docker, pnpm, npm, Gradle, and `~/.cache` without offering unsafe raw deletion of their managed stores.
+- **Progressive scanning** — hotspots and worktrees appear immediately while bounded background jobs calculate sizes.
+- **Safety labels** — separates re-creatable **Safe** data from **Review** areas that always require confirmation.
+- **Guarded deletion** — removes only previously enumerated descendants of user-scoped allowlisted roots; never the root itself.
+- **Safe auto cleanup** — off by default and restricted to aged, re-creatable developer caches after a fresh scan.
 - **Stable scrolling** — rows do not reorder or flicker while a sync is running.
 - **GitHub-aware readiness** — a worktree becomes ready when its PR is merged at the checked-out `HEAD`.
 - **Local-work protection** — modified, staged, deleted, and untracked files are always reported separately from PR state.
@@ -35,7 +40,7 @@ Prune keeps those signals together:
 - **Open anywhere** — detects installed copies of Visual Studio Code, Zed, and Cursor.
 - **Main checkout protection** — the primary repository checkout is never treated as a removable worktree.
 
-Prune never uses `git worktree remove --force`.
+Prune never cleans arbitrary paths and never uses `git worktree remove --force`. The complete policy is in [`docs/DISK_CLEANUP_RUBRIC.md`](docs/DISK_CLEANUP_RUBRIC.md).
 
 ## Requirements
 
@@ -57,7 +62,7 @@ gh auth login
 
 Every successful GitHub Actions run produces a universal **Prune-macOS** build for both Apple Silicon and Intel Macs. Open the run's **Artifacts** section, download it, extract `Prune-macOS.zip`, and move `Prune.app` to Applications.
 
-Version tags such as `v0.1.0` automatically publish the same zip and its SHA-256 checksum on the [Releases page](https://github.com/Parassharmaa/prune/releases), providing a public download that does not expire with CI artifact retention.
+Version tags automatically publish the same zip and its SHA-256 checksum on the [Releases page](https://github.com/Parassharmaa/prune/releases), providing a public download that does not expire with CI artifact retention.
 
 The app is currently ad-hoc signed rather than notarized. On first launch, macOS may require **Control-click → Open**. Developer ID signing and notarization are planned before stable distribution.
 
@@ -90,6 +95,17 @@ On first launch:
 5. Authenticate `gh` if GitHub status is unavailable.
 
 ## Cleanup safety
+
+### Disk hotspots
+
+Prune scans only known folders inside the current user's home directory. Generated developer caches must be untouched for at least 30 days before becoming **Safe** and auto-eligible. Application caches, logs, Downloads, and Trash are labelled **Review**, never cleaned automatically, and show their consequences before an inline destructive confirmation.
+
+Every cleanup revalidates that:
+
+- the root exactly matches an allowlisted hotspot;
+- the root itself is never a deletion target;
+- every target remains a standardized descendant of that root;
+- only targets captured by the scan are removed.
 
 ### Clean merged worktree
 
@@ -137,7 +153,7 @@ Run dependency-free integration checks:
 scripts/test.sh
 ```
 
-The tests create disposable repositories and real linked worktrees to verify parsing, main-checkout protection, dirty-state rejection, stash recovery, and clean removal.
+The tests create disposable home folders, repositories, and linked worktrees to verify hotspot aging and containment, outside-root rejection, parsing, main-checkout protection, dirty-state rejection, stash recovery, and clean removal.
 
 Measure scan latency against a folder:
 
@@ -159,7 +175,7 @@ Exercise auto cleanup against the same non-destructive backend:
 scripts/run-e2e-auto-sample.sh
 ```
 
-The assertions are documented in [`Tests/E2E/INLINE_CLEANUP.md`](Tests/E2E/INLINE_CLEANUP.md). Sample mode cannot invoke Git or remove a real folder.
+The assertions are documented in [`Tests/E2E/INLINE_CLEANUP.md`](Tests/E2E/INLINE_CLEANUP.md). Sample mode uses `/Sample/*` paths, cannot invoke Git, and cannot remove a real folder.
 
 ## Project structure
 
@@ -178,7 +194,7 @@ scripts/                Build, validation, and E2E commands
 
 ## Privacy
 
-Prune runs locally. It does not upload repository contents or include analytics, and it scans only the folders visible in Settings. GitHub status is queried through the user's existing authenticated `gh` session.
+Prune runs locally. It does not upload file or repository contents and includes no analytics. Disk hotspots are restricted to documented user-scoped roots; worktree scan folders remain visible in Settings. GitHub status is queried through the user's existing authenticated `gh` session.
 
 ## Status
 

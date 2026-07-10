@@ -17,6 +17,82 @@ enum PruneSampleData {
         )
     }
 
+    @MainActor
+    static func makeDiskStore() -> DiskHotspotStore {
+        let defaults = UserDefaults(suiteName: "dev.paras.prune.disk-sample.\(UUID().uuidString)") ?? .standard
+        return DiskHotspotStore(
+            cleanupExecutor: SampleDiskCleanupExecutor(),
+            defaults: defaults,
+            home: URL(fileURLWithPath: "/Sample/Home"),
+            initialHotspots: hotspots,
+            automaticallyStartsScanning: false,
+            rechecksBeforeAutoCleanup: false
+        )
+    }
+
+    static let hotspots: [DiskHotspot] = [
+        DiskHotspot(
+            kind: .dockerData,
+            title: "Docker Desktop data",
+            detail: "Inspect reclaimable data with `docker system df`",
+            consequence: "Use Docker's own prune controls to protect active data.",
+            systemImage: "shippingbox.and.arrow.backward.fill",
+            root: URL(fileURLWithPath: "/Sample/Home/Library/Containers/com.docker.docker"),
+            targets: [URL(fileURLWithPath: "/Sample/Home/Library/Containers/com.docker.docker")],
+            safety: .managed,
+            isAutoCleanupEligible: false,
+            sizeBytes: 12_400_000_000
+        ),
+        DiskHotspot(
+            kind: .xcodeDerivedData,
+            title: "Old Xcode build data",
+            detail: "Derived Data untouched for 30 days",
+            consequence: "Xcode recreates this data during a future build.",
+            systemImage: "hammer.fill",
+            root: URL(fileURLWithPath: "/Sample/Home/Library/Developer/Xcode/DerivedData"),
+            targets: [URL(fileURLWithPath: "/Sample/Home/Library/Developer/Xcode/DerivedData/Atlas-fixture")],
+            safety: .safe,
+            isAutoCleanupEligible: true,
+            sizeBytes: 7_800_000_000
+        ),
+        DiskHotspot(
+            kind: .applicationCaches,
+            title: "Old application caches",
+            detail: "App cache folders untouched for 30 days",
+            consequence: "Apps can recreate caches, but their next launch may be slower. Close apps first.",
+            systemImage: "shippingbox.fill",
+            root: URL(fileURLWithPath: "/Sample/Home/Library/Caches"),
+            targets: [URL(fileURLWithPath: "/Sample/Home/Library/Caches/com.example.fixture")],
+            safety: .review,
+            isAutoCleanupEligible: false,
+            sizeBytes: 3_400_000_000
+        ),
+        DiskHotspot(
+            kind: .homebrewDownloads,
+            title: "Old Homebrew downloads",
+            detail: "Downloaded bottles untouched for 30 days",
+            consequence: "Homebrew downloads these packages again if needed.",
+            systemImage: "mug.fill",
+            root: URL(fileURLWithPath: "/Sample/Home/Library/Caches/Homebrew/downloads"),
+            targets: [URL(fileURLWithPath: "/Sample/Home/Library/Caches/Homebrew/downloads/fixture")],
+            safety: .safe,
+            isAutoCleanupEligible: true,
+            sizeBytes: 2_600_000_000
+        ),
+        DiskHotspot(
+            kind: .oldInstallers,
+            title: "Old downloaded installers",
+            detail: "DMG, PKG, XIP, and ZIP files untouched for 30 days",
+            consequence: "These are user files. Confirm that you no longer need them.",
+            systemImage: "arrow.down.circle.fill",
+            root: URL(fileURLWithPath: "/Sample/Home/Downloads"),
+            targets: [URL(fileURLWithPath: "/Sample/Home/Downloads/Example-fixture.dmg")],
+            safety: .review,
+            isAutoCleanupEligible: false,
+            sizeBytes: 1_900_000_000
+        )
+    ]
+
     static let worktrees: [WorktreeSnapshot] = {
         let common = URL(fileURLWithPath: "/Sample/Atlas/.git")
         return [
@@ -131,5 +207,12 @@ private struct SampleCleanupExecutor: WorktreeCleanupExecuting {
             estimatedReclaimedBytes: snapshot.sizeBytes,
             stashCommit: strategy == .stashThenRemove ? "sample-stash-commit" : nil
         )
+    }
+}
+
+private struct SampleDiskCleanupExecutor: DiskHotspotCleaning {
+    func clean(_ hotspot: DiskHotspot) throws -> DiskCleanupResult {
+        Thread.sleep(forTimeInterval: 8.0)
+        return DiskCleanupResult(removedItemCount: hotspot.targets.count, estimatedReclaimedBytes: hotspot.sizeBytes)
     }
 }

@@ -1,6 +1,53 @@
 import SwiftUI
 
+private enum PruneSection: String, CaseIterable, Identifiable {
+    case hotspots = "Hotspots"
+    case worktrees = "Worktrees"
+
+    var id: String { rawValue }
+}
+
 struct MenuBarView: View {
+    @EnvironmentObject private var worktreeStore: AppStore
+    @EnvironmentObject private var diskStore: DiskHotspotStore
+    @State private var section: PruneSection = .hotspots
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Picker("Prune section", selection: $section) {
+                ForEach(PruneSection.allCases) { section in
+                    Text(section.rawValue).tag(section)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .accessibilityIdentifier("prune-section-picker")
+
+            Divider()
+
+            switch section {
+            case .hotspots:
+                HotspotsMenuView()
+            case .worktrees:
+                WorktreesMenuView()
+            }
+        }
+        .frame(width: 400, height: 560)
+        .task { startSelectedSection() }
+        .onChange(of: section) { _, _ in startSelectedSection() }
+    }
+
+    private func startSelectedSection() {
+        switch section {
+        case .hotspots: diskStore.startIfNeeded()
+        case .worktrees: worktreeStore.startIfNeeded()
+        }
+    }
+}
+
+private struct WorktreesMenuView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.openSettings) private var openSettings
     @State private var pendingCleanupID: String?
@@ -68,8 +115,6 @@ struct MenuBarView: View {
             Divider()
             footer
         }
-        .frame(width: 400, height: 520)
-        .task { store.startIfNeeded() }
         .onDisappear { store.applyPendingDisplayOrder() }
     }
 

@@ -7,9 +7,12 @@ mkdir -p .build
 
 swiftc \
   Sources/Prune/Core/ScanRootDefaults.swift \
+  Sources/Prune/Core/DiskHotspot.swift \
   Sources/Prune/Core/WorktreeSnapshot.swift \
   Sources/Prune/Core/WorktreePorcelainParser.swift \
   Sources/Prune/Services/CommandRunner.swift \
+  Sources/Prune/Services/DiskHotspotScanner.swift \
+  Sources/Prune/Services/DiskHotspotCleanupExecutor.swift \
   Sources/Prune/Services/WorktreeDiscovery.swift \
   Sources/Prune/Services/GitHubPullRequestProvider.swift \
   Sources/Prune/Services/WorktreeScanner.swift \

@@ -46,6 +46,74 @@ func testScanRootDefaults() throws {
     )
 }
 
+func testDiskHotspotSafety() throws {
+    let fileManager = FileManager.default
+    let root = fileManager.temporaryDirectory
+        .appendingPathComponent("PruneDiskTests-\(UUID().uuidString)", isDirectory: true)
+    let home = root.appendingPathComponent("Home", isDirectory: true)
+    let derivedData = home.appendingPathComponent("Library/Developer/Xcode/DerivedData", isDirectory: true)
+    let oldProject = derivedData.appendingPathComponent("Atlas-old", isDirectory: true)
+    let recentProject = derivedData.appendingPathComponent("Atlas-recent", isDirectory: true)
+    let managedCache = home.appendingPathComponent(".cache/model-runtime", isDirectory: true)
+    try fileManager.createDirectory(at: oldProject, withIntermediateDirectories: true)
+    try fileManager.createDirectory(at: recentProject, withIntermediateDirectories: true)
+    try fileManager.createDirectory(at: managedCache, withIntermediateDirectories: true)
+    try Data(repeating: 7, count: 8_192).write(to: oldProject.appendingPathComponent("fixture.bin"))
+    try Data(repeating: 9, count: 4_096).write(to: recentProject.appendingPathComponent("fixture.bin"))
+    try Data(repeating: 3, count: 4_096).write(to: managedCache.appendingPathComponent("model.bin"))
+    let now = Date(timeIntervalSince1970: 2_000_000_000)
+    try fileManager.setAttributes([.modificationDate: now.addingTimeInterval(-40 * 24 * 60 * 60)], ofItemAtPath: oldProject.path)
+    try fileManager.setAttributes([.modificationDate: now.addingTimeInterval(-2 * 24 * 60 * 60)], ofItemAtPath: recentProject.path)
+    defer { try? fileManager.removeItem(at: root) }
+
+    let scanner = DiskHotspotScanner(now: now)
+    let hotspots = scanner.scan(home: home)
+    guard let hotspot = hotspots.first(where: { $0.kind == .xcodeDerivedData }) else {
+        throw SelfTestError.failed("Scanner should find old Xcode Derived Data")
+    }
+    let targetPaths = Set(hotspot.targets.map(\.standardizedFileURL.path))
+    try expect(
+        targetPaths == Set([oldProject.standardizedFileURL.path]),
+        "Only aged generated data should be eligible"
+    )
+    try expect(hotspot.isAutoCleanupEligible, "Aged Xcode data should be safe for opt-in automation")
+    try expect((hotspot.sizeBytes ?? 0) > 0, "Hotspot size should be measured")
+    guard let toolManaged = hotspots.first(where: { $0.kind == .developerCache }) else {
+        throw SelfTestError.failed("Scanner should report tool-managed developer caches")
+    }
+    try expect(toolManaged.safety == .managed, "Tool stores should have a separate safety class")
+    try expect(!toolManaged.canClean, "Prune should not offer raw deletion for tool-managed stores")
+
+    let executor = DiskHotspotCleanupExecutor(home: home)
+    _ = try executor.clean(hotspot)
+    try expect(!fileManager.fileExists(atPath: oldProject.path), "Cleanup should remove the enumerated old target")
+    try expect(fileManager.fileExists(atPath: recentProject.path), "Cleanup should preserve recent build data")
+    try expect(fileManager.fileExists(atPath: derivedData.path), "Cleanup should preserve the allowlisted root")
+
+    let outside = root.appendingPathComponent("outside.txt")
+    try Data("keep".utf8).write(to: outside)
+    let unsafe = DiskHotspot(
+        kind: .xcodeDerivedData,
+        title: "Unsafe fixture",
+        detail: "Fixture",
+        consequence: "Fixture",
+        systemImage: "hammer",
+        root: derivedData,
+        targets: [outside],
+        safety: .safe,
+        isAutoCleanupEligible: true,
+        sizeBytes: 4
+    )
+    var refusedOutsideTarget = false
+    do {
+        _ = try executor.clean(unsafe)
+    } catch DiskHotspotCleanupError.unsafeTarget {
+        refusedOutsideTarget = true
+    }
+    try expect(refusedOutsideTarget, "Cleanup should reject targets outside the allowlisted root")
+    try expect(fileManager.fileExists(atPath: outside.path), "Rejected cleanup should preserve the outside file")
+}
+
 func testPorcelainParser() throws {
     let fields = [
         "worktree /tmp/main repo",
@@ -192,6 +260,8 @@ func testRealRepositoryDiscovery() throws {
 do {
     try testScanRootDefaults()
     print("✓ first-run scan folders use dynamic macOS locations")
+    try testDiskHotspotSafety()
+    print("✓ disk hotspots require age, allowlisted roots, and contained targets")
     try testPorcelainParser()
     print("✓ porcelain parser")
     try testGitHubMergedHeadReadiness()
